@@ -1,4 +1,4 @@
-DEFAULT_VIDEO_LANGS = ['en']
+DEFAULT_VIDEO_LANGS = ['en',"zh"]
 
 
 mapper = {
@@ -15,6 +15,7 @@ mapper = {
     'czech': 'cs',
     'arabic': 'ar',
     'chinese': 'zh-cn',
+    'chinese': 'zh',
     'japanese': 'ja',
     'hungarian': 'hu',
     'korean': 'ko'

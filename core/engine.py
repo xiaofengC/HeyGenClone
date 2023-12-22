@@ -24,7 +24,7 @@ import torch
 from itertools import groupby
 import numpy as np
 from moviepy.video.io.VideoFileClip import VideoFileClip
-
+import time
 
 class Engine:
     def __init__(self, config, output_language):
@@ -52,6 +52,7 @@ class Engine:
 
     def __call__(self, video_file_path, output_file_path):
         # [Step 1] Reading the video, getting audio (voice + noise), as well as the text of the voice -------
+        print("########################Step1###############################")
         orig_clip = VideoFileClip(video_file_path, verbose=False)
         original_audio_file = self.temp_manager.create_temp_file(
             suffix='.wav').name
@@ -73,11 +74,13 @@ class Engine:
         # ---------------------------------------------------------------------------------------------------
 
         # [Step 2] Getting voice segments, frames, do face detection + reidentification ---------------------
+        print("########################Step2###############################")
         voice_segments = get_voice_segments(speakers)
         self.scene_processor(orig_clip, video_file_path, voice_segments)
         # ---------------------------------------------------------------------------------------------------
 
         # [Step 3] Trying to connect the voices and the detected people -------------------------------------
+        print("########################Step3###############################")
         speaker_groups = groupby(speakers, key=lambda x: x['speaker'])
         connections = dict()
 
@@ -102,6 +105,7 @@ class Engine:
         # ---------------------------------------------------------------------------------------------------
 
         # [Step 4] Merging voices, translating speech, cloning voices ---------------------------------------
+        print("########################Step4###############################")
         merged_voices = merge_voices(speakers, voice_audio)
 
         updates = []
@@ -115,8 +119,15 @@ class Engine:
             voice_wav = self.temp_manager.create_temp_file(suffix='.wav').name
             voice.export(voice_wav, format='wav')
 
-            dst_text = self.text_helper.translate(
+            self.text_helper.translate(
                 speaker['text'], src_lang=lang, dst_lang=self.output_language)
+
+            print("Please review the translation text...")
+            input()
+
+            file = open("translate_output.txt", "r")
+            dst_text = file.read()
+            file.close()
 
             sub_voice = voice_audio[speaker['start'] * 1000: speaker['end'] * 1000]
             sub_voice_wav = self.temp_manager.create_temp_file(
@@ -136,6 +147,7 @@ class Engine:
         # ---------------------------------------------------------------------------------------------------
 
         # [Step 5] Creating final speech audio --------------------------------------------------------------
+        print("########################Step5###############################")
         original_audio_duration = voice_audio.duration_seconds * 1000
 
         segments = to_segments(updates, original_audio_duration)
@@ -154,6 +166,7 @@ class Engine:
         # ---------------------------------------------------------------------------------------------------
 
         # [Step 6] LipSync + merging frames -----------------------------------------------------------------
+        print("########################Step6###############################")
         frames = dict()
 
         all_frames = self.scene_processor.get_frames()
@@ -167,11 +180,12 @@ class Engine:
         frames = to_extended_frames(
             frames, speakers, orig_clip.fps, self.scene_processor.get_face_on_frame)
         self.scene_processor.close()
-        frames = self.lip_sync.sync(
-            frames, speech_audio_wav, orig_clip.fps, self.use_enhancer)
+        # frames = self.lip_sync.sync(
+        #     frames, speech_audio_wav, orig_clip.fps, self.use_enhancer)
         # ---------------------------------------------------------------------------------------------------
 
         # [Step 7] Merging speech voice and noise, creating output ------------------------------------------
+        print("########################Step7###############################")
         temp_result_avi = to_avi(frames, orig_clip.fps)
 
         noise_audio_wav = self.temp_manager.create_temp_file(
